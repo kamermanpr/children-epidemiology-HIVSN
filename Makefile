@@ -1,5 +1,5 @@
 # Set additional directories 'make' must search for dependencies in
-VPATH = data input_scripts
+VPATH = data scripts
 
 # Create dummy targets to ensure all intermediate targets are 'made'
 .PHONY: all
