@@ -1,0 +1,386 @@
+---
+title: 'HIV-SN in children'
+subtitle: 'Data analysis: Risk factors for motor dysfunction'
+author: Natalie Benjamin, Joanne Potterton, and Peter Kamerman 
+date: "`r format(Sys.time(), '%d %B %Y')`"
+output: 
+  html_document:
+    theme: yeti
+    highlight: haddock
+    code_folding: show
+    toc: true
+    toc_depth: 3
+    toc_float: true
+---
+
+```{r setup, include = FALSE}
+# Load libraries
+library(tidyverse)
+library(stringr)
+library(coin)
+library(pander)
+
+# knitr options
+knitr::opts_chunk$set(echo = TRUE,
+               warning = FALSE, 
+               message =  FALSE, 
+               cache = TRUE,
+               fig.path = './figures/sn-risk/',
+               tidy = FALSE)
+```
+
+
+```{r data_import}
+# Import data
+data <- read_csv('./data/cleaned_data.csv')
+
+# Trim df to required variables
+data <- data %>%
+    select(ID,
+           Neuropathy,
+           Sex,
+           WAZ,
+           HAZ,
+           CD4,
+           Viral.load,
+           MABC.zone,
+           ends_with('percentile'),
+           starts_with('BPNS'),
+           starts_with('Other'),
+           -ends_with('RL'),
+           -ends_with('R'),
+           -ends_with('L')) %>%
+    rename(MABC.dexterity = MABC.manual.dex.percentile,
+           MABC.throwing = MABC.throw.percentile,
+           MABC.balance = MABC.balance.percentile,
+           MABC.total = MABC.total.percentile,
+           Current.pain = BPNS.current.pain,
+           Previous.pain = BPNS.prev.pain,
+           Numbness = BPNS.numbness,
+           Pins.n.needles = BPNS.pin.n.needles,
+           Cramping = Other.symp.cramping,
+           Itch = Other.symp.itching,
+           Painful.cold = Other.symp.painful.cold)
+```
+
+## Quick look
+```{r quick_look}
+# 'Top-n-tail' data
+head(data)
+tail(data)
+
+# Check structure
+glimpse(data)
+```
+
+## Predictors
+
+### Neuropathy
+
+**NOTE:** 
+
+- _Risk for symptomatic SN were not explored because of the small sample size of SN+._
+
+```{r motor_sn}
+############################################################
+#                                                          #
+#                 Motor performance in SN+                 #
+#                                                          #
+############################################################
+# Print summary table
+data %>%
+    select(ID, Neuropathy, starts_with('MABC'), -MABC.zone) %>%
+    gather(key = Key, value = value, starts_with('MABC'), -ID, -Neuropathy) %>%
+    mutate(Key = str_replace(Key, 'MABC.', ''),
+           Key = str_to_title(Key)) %>%
+    group_by(Neuropathy, Key) %>%
+    summarise(Q25 = round(quantile(value, 0.25)),
+              median = round(median(value)),
+              Q75 = round(quantile(value, 0.75))) %>%
+    arrange(Key, desc(Neuropathy)) %>%
+    select(Key, Neuropathy, Q25, median, Q75) %>%
+    pander(caption = 'Relationship between neuropathy and MABC variables',
+           justify = 'llrrr', emphasize.italics.rows = c(2, 4, 6, 8))
+# Summary plot
+data %>%
+    select(ID, Neuropathy, starts_with('MABC'), -MABC.zone) %>%
+    gather(key = Key, value = value, starts_with('MABC'), -ID, -Neuropathy) %>%
+    mutate(Key = str_replace(Key, 'MABC.', ''),
+           Key = str_to_title(Key)) %>%
+    ggplot(data = .) +
+    aes(x = Key, y = value, 
+        colour = Neuropathy, fill = Neuropathy) +
+    geom_boxplot(alpha = 0.6) +
+    labs(title = 'Relationship between neuropathy and MABC variables',
+         x = 'MABC variable',
+         y = 'Percentile')
+
+############################################################
+#                                                          #
+#                         Balance                          #
+#                                                          #
+############################################################
+# Process data
+sn_balance <- data %>%
+    select(Neuropathy, MABC.balance)
+# Plot
+qplot(data = sn_balance, 
+      y = MABC.balance, x = Neuropathy, 
+      geom = c('boxplot', 'jitter'), 
+      ylim = c(0, 100))
+# Stats
+wilcox_test(MABC.balance ~ factor(Neuropathy),
+            data = sn_balance,
+            distribution = 'exact',
+            conf.int = TRUE)
+
+############################################################
+#                                                          #
+#                        Dexterity                         #
+#                                                          #
+############################################################
+# Process data
+sn_dexterity <- data %>%
+    select(Neuropathy, MABC.dexterity)
+# Plot
+qplot(data = sn_dexterity, 
+      y = MABC.dexterity, x = Neuropathy, 
+      geom = c('boxplot', 'jitter'), 
+      ylim = c(0, 100))
+# Stats
+wilcox_test(MABC.dexterity ~ factor(Neuropathy),
+            data = sn_dexterity,
+            distribution = 'exact',
+            conf.int = TRUE)
+
+############################################################
+#                                                          #
+#                         Throwing                         #
+#                                                          #
+############################################################
+# Process data
+sn_throw <- data %>%
+    select(Neuropathy, MABC.throwing)
+# Plot
+qplot(data = sn_throw, 
+      y = MABC.throwing, x = Neuropathy, 
+      geom = c('boxplot', 'jitter'), 
+      ylim = c(0, 100))
+# Stats
+wilcox_test(MABC.throwing ~ factor(Neuropathy),
+            data = sn_throw,
+            distribution = 'exact',
+            conf.int = TRUE)
+############################################################
+#                                                          #
+#                          Total                           #
+#                                                          #
+############################################################
+# Process data
+sn_total <- data %>%
+    select(Neuropathy, MABC.total)
+# Plot
+qplot(data = sn_total, 
+      y = MABC.total, x = Neuropathy, 
+      geom = c('boxplot', 'jitter'), 
+      ylim = c(0, 100))
+# Stats
+wilcox_test(MABC.total ~ factor(Neuropathy),
+            data = sn_total,
+            distribution = 'exact',
+            conf.int = TRUE)
+```
+
+### Other
+
+**NOTE:** 
+
+- _No influence of SN on motor function, therefore collapsed across SN groups._ 
+
+- _Assessed the effect of weight for age, CD4 T-cell count, and viral load_
+
+- _Effect of each 'Other' variable assessed against all MABC variables._
+
+- _If bivariate plot (continious variables) showed no relationship, no correlation performed._ 
+
+```{r motor_other}
+############################################################
+#                                                          #
+#                          Weight                          #
+#                                                          #
+############################################################
+
+# Balance #
+###########
+# Process data
+waz_balance <- data %>%
+    select(WAZ, MABC.balance) %>%
+    filter(complete.cases(.))
+# Plot
+qplot(data = waz_balance, 
+      y = MABC.balance, x = WAZ, 
+      geom = c('point', 'smooth'), 
+      ylim = c(0, 100))
+# No relationship
+
+# dexterity #
+###########
+# Process data
+waz_dexterity <- data %>%
+    select(WAZ, MABC.dexterity) %>%
+    filter(complete.cases(.))
+# Plot
+qplot(data = waz_dexterity, 
+      y = MABC.dexterity, x = WAZ, 
+      geom = c('point', 'smooth'), 
+      ylim = c(0, 100))
+# No relationship
+
+# Throwing #
+###########
+# Process data
+waz_throwing <- data %>%
+    select(WAZ, MABC.throwing) %>%
+    filter(complete.cases(.))
+# Plot
+qplot(data = waz_throwing, 
+      y = MABC.throwing, x = WAZ, 
+      geom = c('point', 'smooth'), 
+      ylim = c(0, 100))
+# No relationship
+
+# total #
+###########
+# Process data
+waz_total <- data %>%
+    select(WAZ, MABC.total) %>%
+    filter(complete.cases(.))
+# Plot
+qplot(data = waz_total, 
+      y = MABC.total, x = WAZ, 
+      geom = c('point', 'smooth'), 
+      ylim = c(0, 100))
+# No relationship
+
+############################################################
+#                                                          #
+#                          CD4                             #
+#                                                          #
+############################################################
+
+# Balance #
+###########
+# Process data
+cd4_balance <- data %>%
+    select(CD4, MABC.balance) %>%
+    filter(complete.cases(.))
+# Plot
+qplot(data = cd4_balance, 
+      y = MABC.balance, x = CD4, 
+      geom = c('point', 'smooth'), 
+      ylim = c(0, 100))
+# No relationship
+
+# dexterity #
+###########
+# Process data
+cd4_dexterity <- data %>%
+    select(CD4, MABC.dexterity) %>%
+    filter(complete.cases(.))
+# Plot
+qplot(data = cd4_dexterity, 
+      y = MABC.dexterity, x = CD4, 
+      geom = c('point', 'smooth'), 
+      ylim = c(0, 100))
+# No relationship
+
+# Throwing #
+###########
+# Process data
+cd4_throwing <- data %>%
+    select(CD4, MABC.throwing) %>%
+    filter(complete.cases(.))
+# Plot
+qplot(data = cd4_throwing, 
+      y = MABC.throwing, x = CD4, 
+      geom = c('point', 'smooth'), 
+      ylim = c(0, 100))
+# No relationship
+
+# total #
+###########
+# Process data
+cd4_total <- data %>%
+    select(CD4, MABC.total) %>%
+    filter(complete.cases(.))
+# Plot
+qplot(data = cd4_total, 
+      y = MABC.total, x = CD4, 
+      geom = c('point', 'smooth'), 
+      ylim = c(0, 100))
+# No relationship
+
+############################################################
+#                                                          #
+#                  (log10)Viral load                       #
+#                                                          #
+############################################################
+
+# Balance #
+###########
+# Process data
+viral.load_balance <- data %>%
+    select(Viral.load, MABC.balance) %>%
+    filter(complete.cases(.))
+# Plot
+qplot(data = viral.load_balance, 
+      y = MABC.balance, x = log10(Viral.load), 
+      geom = c('point', 'smooth'), 
+      ylim = c(0, 100))
+# No relationship
+
+# dexterity #
+###########
+# Process data
+viral.load_dexterity <- data %>%
+    select(Viral.load, MABC.dexterity) %>%
+    filter(complete.cases(.))
+# Plot
+qplot(data = viral.load_dexterity, 
+      y = MABC.dexterity, x = log10(Viral.load), 
+      geom = c('point', 'smooth'), 
+      ylim = c(0, 100))
+# No relationship
+
+# Throwing #
+###########
+# Process data
+viral.load_throwing <- data %>%
+    select(Viral.load, MABC.throwing) %>%
+    filter(complete.cases(.))
+# Plot
+qplot(data = viral.load_throwing, 
+      y = MABC.throwing, x = log10(Viral.load), 
+      geom = c('point', 'smooth'), 
+      ylim = c(0, 100))
+# No relationship
+
+# total #
+###########
+# Process data
+viral.load_total <- data %>%
+    select(Viral.load, MABC.total) %>%
+    filter(complete.cases(.))
+# Plot
+qplot(data = viral.load_total, 
+      y = MABC.total, x = log10(Viral.load), 
+      geom = c('point', 'smooth'), 
+      ylim = c(0, 100))
+# No relationship
+```
+
+## Session infomation
+```{r session_info, echo = F, warning = F, message = F}
+pander(sessionInfo())
+```
+

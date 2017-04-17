@@ -1,0 +1,7 @@
+.Rhistory
+.Rapp.history
+.Rproj.user
+.Rproj
+*_cache/
+*.html
+packrat/lib*/

@@ -1,0 +1,211 @@
+---
+title: 'HIV-SN in children'
+subtitle: 'Descriptive analyses: Demographics and HIV profile'
+author: Natalie Benjamin, Joanne Potterton, and Peter Kamerman 
+date: "`r format(Sys.time(), '%d %B %Y')`"
+output: 
+  html_document:
+    theme: yeti
+    highlight: haddock
+    code_folding: show
+    toc: true
+    toc_depth: 3
+    toc_float: true
+---
+
+```{r setup, include = FALSE}
+# Load libraries
+library(tidyverse)
+library(stringr)
+library(pander)
+
+# knitr options
+knitr::opts_chunk$set(echo = TRUE,
+               warning = FALSE, 
+               message =  FALSE, 
+               cache = TRUE,
+               fig.path = './figures/demographics/',
+               fig.height = 7,
+               fig.width = 5,
+               fig.align = 'center',
+               tidy = FALSE)
+```
+
+
+```{r data_import}
+# Import data
+data <- read_csv('./data/cleaned_data.csv')
+
+# Trim to demographic and HIV disease data only
+data <- select(data, 1:13, Age.years, ART.years)
+```
+
+## Quick look
+```{r quick_look}
+# 'Top-n-tail' data
+head(data)
+tail(data)
+
+# Check structure
+glimpse(data)
+
+# Quick 5-number summary
+summary(data)
+```
+
+## Demographic data
+```{r demographics}
+# Sex
+## Count
+pander(summary(factor(data$Sex)), 
+       caption = 'Number of males and females')
+
+## Percent female
+pander(data_frame(`% female` = 
+                      round(length(data[data$Sex == 'female', ])
+                            / length(data$Sex) * 100)))
+
+# Age
+## Summarise for table
+age <- data %>%
+    select(Age.years) %>%
+    summarise(`Age (years)` = round(mean(Age.years), 1),
+              SD = round(sd(Age.years), 1))
+## Print summary
+pander(age, caption = 'Mean age of the children')
+## Plot data
+qplot(data$Age.years, geom = c('boxplot', 'jitter'), 
+      x = 'Children\n(n = 135)', ylab = 'Years', main = 'Age')
+
+# Weight for age 
+## Print summary table
+pander(summary(data$WAZ), caption = 'Weight for age (z-score)')
+## Plot data
+qplot(data$WAZ, geom = c('boxplot', 'jitter'), ylim = c(-2, 2), 
+      x = 'Children\n(n = 135)', ylab = 'z-score', main = 'Weight for age') +
+    geom_hline(yintercept = 0, colour = 'red')
+
+# Height for age 
+## Print summary table
+pander(summary(data$HAZ), caption = 'Height for age (z-score)')
+## Plot data 
+qplot(data$HAZ, geom = c('boxplot', 'jitter'), ylim = c(-2, 2), 
+      x = 'Children\n(n = 135)', ylab = 'z-score', main = 'Height for age') +
+    geom_hline(yintercept = 0, colour = 'red')
+```
+
+## Disease data
+```{r disease_data}
+# Most recent CD4
+## Print summary table
+pander(summary(data$CD4), caption = 'Most recent CD4 T-cell count (cells/mm3)')
+## Plot data
+qplot(data$CD4, geom = c('boxplot', 'jitter'), 
+      x = 'Children\n(n = 135)', ylab = 'CD4 T-cell count (cells/mm3)', 
+      main = 'Most recent CD4 T-cell count')
+
+# Most recent viral load
+## Print summary table
+pander(summary(log10(data$Viral.load)), 
+       caption = 'Most recent viral load [log10(copies/ml)]')
+## Plot data
+qplot(log10(data$Viral.load), geom = c('boxplot', 'jitter'), 
+      x = 'Children\n(n = 135)', ylab = 'Viral load [log10(copies/ml)]', 
+      main = 'Most recent viral load')
+
+# ART regimen
+## Get names for ordering factor
+foo_names <- data %>%
+    select(ART.regimen) %>%
+    filter(!is.na(ART.regimen)) %>%
+    group_by(ART.regimen) %>%
+    summarise(foo_names = unique(ART.regimen)) %>%
+    select(foo_names) %>%
+    .$foo_names
+## Get counts and arrange with NA last
+foo <- data %>%
+    mutate(ART.regimen = str_replace_na(ART.regimen)) %>%
+    group_by(ART.regimen) %>%
+    summarise(n = n()) %>%
+    mutate(ART.regimen = factor(ART.regimen,
+                                levels = c(foo_names, 'NA'),
+                                ordered = TRUE)) %>%
+    arrange(ART.regimen)
+## xtabulate for printing
+foo2 <- xtabs(n ~ ART.regimen, data = foo)
+## Print table
+pander(foo2, caption = 'Current ART regimen',
+       split.tables = Inf)
+## Remove tmp objects
+rm(list = c('foo', 'foo2', 'foo_names'))
+
+# D4T ever
+## Get counts and arrange with NA last
+bar <- data %>%
+    mutate(d4T.ever = str_replace_na(d4T.ever)) %>%
+    group_by(d4T.ever) %>%
+    summarise(n = n()) %>%
+    mutate(d4T.ever = factor(d4T.ever,
+                             levels = c('Yes', 'No', 'NA'),
+                             ordered = TRUE)) %>%
+    arrange(d4T.ever)
+## xtabulate for printing
+bar2 <- xtabs(n ~ d4T.ever, data = bar)
+## Print table
+pander(bar2, caption = 'd4T use: ever',
+       split.tables = Inf)
+## Remove tmp objects
+rm(list = c('bar', 'bar2'))
+
+# Currently on d4T
+## Process data
+baz <- data %>%
+    select(ART.regimen, d4T.ever) %>%
+    mutate(ART.regimen = str_replace_na(ART.regimen),
+           d4T.ever = str_replace_na(d4T.ever)) %>%
+    mutate(d4T.now = ifelse(str_detect(ART.regimen, 
+                                       pattern = 'D4T') == TRUE,
+                            'Yes', ifelse(str_detect(ART.regimen, 
+                                                     pattern = 'NA') == TRUE,
+                                          'NA', 'No'))) 
+## Get counts and arrange with NA last
+baz2 <- baz %>%
+    group_by(d4T.now) %>%
+    summarise(n = n()) %>%
+    mutate(d4T.now = factor(d4T.now,
+                            levels = c('Yes', 'No', 'NA'),
+                            ordered = TRUE)) %>%
+    arrange(d4T.now)
+## xtabulate for printing
+baz3 <- xtabs(n ~ d4T.now, data = baz2)
+## Print table
+pander(baz3, caption = 'd4T use: current',
+       split.tables = Inf)
+## Remove tmp objects (keep baz for next step)
+rm(list = c('baz2', 'baz3'))
+
+# Previous D4T use
+## Get counts and arrange with NA last
+cux <- baz %>%
+    mutate(d4T.previous = ifelse(c(d4T.ever == 'Yes' & d4T.now == 'No'),
+                            'Yes', ifelse(d4T.now == 'No',
+                                          'No', 'NA'))) %>%
+    group_by(d4T.previous) %>%
+    summarise(n = n()) %>%
+    mutate(d4T.previous = factor(d4T.previous, 
+                                 levels = c('Yes', 'No', 'NA'),
+                                 ordered = TRUE)) %>%
+    arrange(d4T.previous)
+## xtabulate for printing
+cux2 <- xtabs(n ~ d4T.previous, data = cux)
+## Print table
+pander(cux2, caption = 'd4T use: previous', 
+       split.tables = Inf)
+## Remove tmp objects
+rm(list = c('baz', 'cux', 'cux2'))
+```
+
+## Session infomation
+```{r session_info, echo = F, warning = F, message = F}
+pander(sessionInfo())
+```

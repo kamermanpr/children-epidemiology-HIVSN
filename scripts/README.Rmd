@@ -1,0 +1,48 @@
+---
+title: 'HIV-SN in children'
+author: Natalie Benjamin, Joanne Potterton, and Peter Kamerman 
+date: "`r format(Sys.time(), '%d %B %Y')`"
+output: github_document
+---
+
+```{r setup, include = FALSE}
+# Load libraries
+library(readr)
+library(pander)
+
+# knitr options
+knitr::opts_chunk$set(echo = FALSE,
+               warning = FALSE, 
+               message =  FALSE, 
+               cache = FALSE,
+               fig.path = './figures/',
+               tidy = FALSE)
+```
+
+## Project overview
+
+## Ethics clearance
+The study was approved by the Human Ethics Research Committee of the University of the Witwatersrand, South Africa (clearance certificate: M120767).
+
+## Questions  
+1. Prevalence of:
+    - HIV-associated sensory neuropathy (SN)  
+    - Symptomatic SN  
+2. Characteristics of symptomatic SN 
+3. Predictors of SN/symptomatic SN (secondary analysis)
+4. Motor development
+    - Descriptive data on motor development  
+    - Does SN influence motor development  
+    - Do other disease-related factors influence motor development (secondary analysis)  
+
+## Code book
+```{r code_book, echo = FALSE}
+# Import code book 
+codebook <- read_csv('./data/code_book.csv')
+
+# Table
+pander(codebook, 
+       style = 'rmarkdown', 
+       justify = 'left',
+       split.tables = 'Inf')
+```

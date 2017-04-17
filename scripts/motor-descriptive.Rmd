@@ -1,0 +1,375 @@
+---
+title: 'HIV-SN in children'
+subtitle: 'Descriptive analyses: Motor development'
+author: Natalie Benjamin, Joanne Potterton, and Peter Kamerman 
+date: "`r format(Sys.time(), '%d %B %Y')`"
+output: 
+  html_document:
+    theme: yeti
+    highlight: haddock
+    code_folding: show
+    toc: true
+    toc_depth: 3
+    toc_float: true
+---
+
+```{r setup, include = FALSE}
+# Load libraries
+library(tidyverse)
+library(pander)
+library(boot)
+library(rbokeh)
+
+# knitr options
+knitr::opts_chunk$set(echo = TRUE,
+               warning = FALSE, 
+               message =  FALSE, 
+               cache = TRUE,
+               fig.path = './figures/motor-descriptive/',
+               tidy = FALSE)
+```
+
+
+```{r data_import}
+# Import data
+data <- read_csv('./data/cleaned_data.csv')
+
+# Trim df to required variables
+data <- data %>%
+    select(ID, 
+           starts_with('MABC'),
+           -ends_with('.score'))
+```
+
+### Quick look
+```{r quick_look}
+# 'Top-n-tail' data
+head(data)
+tail(data)
+
+# Check structure
+glimpse(data)
+```
+
+## Motor performance
+**Data are reported as age-adjusted percentile scores**
+
+### Boot functions
+```{r boot_functions}
+############################################################
+#                                                          #
+#                      Boot functions                      #
+#                                                          #
+############################################################
+# Use package 'boot' to calculate bootstrap 95%CI
+## MABC percentiles
+### Because the data are very skewed, we used the 50 to 99% 
+### percentile as the metric
+mabc <- function(data, i) {
+    dat_quant <- vector('numeric', length = 3)
+    quantiles <- c(0.5, 0.75, 0.95)
+    dat <- data[i]
+    for(i in 1:3) {
+        dat_quant[[i]] <- quantile(dat, probs = quantiles[[i]])
+    }
+    return(dat_quant)
+}
+```
+
+## Motor performance summaries
+### Dexterity
+```{r dexterity_performance}
+# Complete cases
+nrow(data[!is.na(data$MABC.manual.dex.percentile), ])
+# Exploratory plot
+qplot(data = data, y = MABC.manual.dex.percentile, x = '', 
+      geom = c('boxplot', 'jitter'), ylim = c(0, 100),
+      main = 'MABC manual dexterity', 
+      ylab = 'MABC manual dexterity score (percentile)\n') +
+    geom_hline(yintercept = 50, colour = 'red')
+# Summary table
+data %>%
+    summarise(Q25 = quantile(MABC.manual.dex.percentile, 0.25),
+              Median = median(MABC.manual.dex.percentile),
+              Q75 = quantile(MABC.manual.dex.percentile, 0.75)) %>%
+    pander(caption = 'MABC manual dexterity score: 3-number summary',
+           justify = 'rrr')
+# Bootstrap 95% CI
+dex_boot <- boot(data = data$MABC.manual.dex.percentile, 
+              statistic = mabc, 
+              R = 10000)
+# Generate list of 'basic' 95% CI outputs for each quantile
+dex_bootCI <- vector('list', length = 3)
+for(i in 1:3) {
+    dex_bootCI[[i]] <- boot.ci(dex_boot, 
+                               type = 'basic', 
+                               index = i)$basic[4:5]
+}
+names(dex_bootCI) <- c('50th', '75th', '95th')
+# Summary table
+dex_tab <- data_frame(Percentile = c('50th', '75th', '95th'), 
+                     `Point estimate` = with(data, c(
+                         round(quantile(MABC.manual.dex.percentile, 0.5)),
+                         round(quantile(MABC.manual.dex.percentile, 0.75)),
+                         round(quantile(MABC.manual.dex.percentile, 0.95)))),
+                     `Lower 95% CI limit` = with(dex_bootCI, c(
+                         round(`50th`[1]),
+                         round(`75th`[1]),
+                         round(`95th`[1]))),
+                     `Upper 95% CI limit` = with(dex_bootCI, c(
+                         round(`50th`[2]),
+                         round(`75th`[2]),
+                         round(`95th`[2])))) 
+pander(dex_tab, 
+       caption = 'Manual dexterity performance (percentile)', justify = 'rrrr')
+# Plot
+ggplot(dex_tab) +
+    aes(y = Percentile, x = `Point estimate`) +
+    geom_errorbarh(aes(xmin = `Lower 95% CI limit`,
+                      xmax = `Upper 95% CI limit`),
+                  height = 0.4, size = 1) +
+    geom_vline(xintercept = 50, colour = 'red') +
+    coord_cartesian(xlim = c(0, 100)) +
+    geom_point(size = 8) +
+    labs(title = 'MABC manual dexterity in 135 HIV+ children',
+         subtitle = '(Confidence limits trimmed to between 0 and 100)',
+         y = 'MABC manual dexterity score (percentile)\n',
+         x = 'Percentile') +
+    theme(legend.position = 'none')
+```
+
+### Balance
+```{r balance_performance}
+# Complete cases
+nrow(data[!is.na(data$MABC.balance.percentile), ])
+# Exploratory plot
+qplot(data = data, y = MABC.balance.percentile, x = '', 
+      geom = c('boxplot', 'jitter'), ylim = c(0, 100),
+      main = 'MABC balance', 
+      ylab = 'MABC balance score (percentile)\n') +
+    geom_hline(yintercept = 50, colour = 'red')
+# Summary table
+data %>%
+    summarise(Q25 = quantile(MABC.balance.percentile, 0.25),
+              Median = median(MABC.balance.percentile),
+              Q75 = quantile(MABC.balance.percentile, 0.75)) %>%
+    pander(caption = 'MABC balance score: 3-number summary',
+           justify = 'rrr')
+# Bootstrap 95% CI
+balance_boot <- boot(data = data$MABC.balance.percentile, 
+              statistic = mabc, 
+              R = 10000)
+# Generate list of 'basic' 95% CI outputs for each quantile
+balance_bootCI <- vector('list', length = 3)
+for(i in 1:3) {
+    balance_bootCI[[i]] <- boot.ci(balance_boot, 
+                                   type = 'basic', 
+                                   index = i)$basic[4:5]
+}
+names(balance_bootCI) <- c('50th', '75th', '95th')
+# Summary table
+balance_tab <- data_frame(Percentile = c('50th', '75th', '95th'), 
+                     `Point estimate` = with(data, c(
+                         round(quantile(MABC.balance.percentile, 0.5)),
+                         round(quantile(MABC.balance.percentile, 0.75)),
+                         round(quantile(MABC.balance.percentile, 0.95)))),
+                     `Lower 95% CI limit` = with(balance_bootCI, c(
+                         round(`50th`[1]),
+                         round(`75th`[1]),
+                         round(`95th`[1]))),
+                     `Upper 95% CI limit` = with(balance_bootCI, c(
+                         round(`50th`[2]),
+                         round(`75th`[2]),
+                         round(`95th`[2]))))
+# Distortion of 95% CI at upper end.
+# Trim upper limit to be within 100th percentile 
+balance_tab[balance_tab$`Upper 95% CI limit` > 100, 4] <- 100
+# Table
+pander(balance_tab, 
+       caption = 'MABC balance performance (percentile)', justify = 'rrrr')
+# Plot
+ggplot(balance_tab) +
+    aes(y = Percentile, x = `Point estimate`) +
+    geom_errorbarh(aes(xmin = `Lower 95% CI limit`,
+                      xmax = `Upper 95% CI limit`), 
+                   height = 0.4, size = 1) +
+    geom_vline(xintercept = 50, colour = 'red') +
+    coord_cartesian(xlim = c(0, 100)) +
+    geom_point(size = 8) +
+    labs(title = 'MABC balance performance in 135 HIV+ children',
+         subtitle = '(Confidence limits trimmed to between 0 and 100)',
+         y = 'MABC balance performance (percentile)\n',
+         x = 'Percentile') +
+    theme(legend.position = 'none')
+```
+
+### Throwing
+```{r throwing_performance}
+# Complete cases
+nrow(data[!is.na(data$MABC.throw.percentile), ])
+# Exploratory plot
+qplot(data = data, y = MABC.throw.percentile, x = '', 
+      geom = c('boxplot', 'jitter'), ylim = c(0, 100),
+      main = 'MABC throwing', 
+      ylab = 'MABC throwing score (percentile)\n') +
+    geom_hline(yintercept = 50, colour = 'red')
+# Summary table
+data %>%
+    summarise(Q25 = quantile(MABC.throw.percentile, 0.25),
+              Median = median(MABC.throw.percentile),
+              Q75 = quantile(MABC.throw.percentile, 0.75)) %>%
+    pander(caption = 'MABC throwing score: 3-number summary',
+           justify = 'rrr')
+# Bootstrap 95% CI
+throw_boot <- boot(data = data$MABC.throw.percentile, 
+              statistic = mabc, 
+              R = 10000)
+# Generate list of 'basic' 95% CI outputs for each quantile
+throw_bootCI <- vector('list', length = 3)
+for(i in 1:3) {
+    throw_bootCI[[i]] <- boot.ci(throw_boot, 
+                                   type = 'basic', 
+                                   index = i)$basic[4:5]
+}
+names(throw_bootCI) <- c('50th', '75th', '95th')
+# Summary table
+throw_tab <- data_frame(Percentile = c('50th', '75th', '95th'), 
+                     `Point estimate` = with(data, c(
+                         round(quantile(MABC.throw.percentile, 0.5)),
+                         round(quantile(MABC.throw.percentile, 0.75)),
+                         round(quantile(MABC.throw.percentile, 0.95)))),
+                     `Lower 95% CI limit` = with(throw_bootCI, c(
+                         round(`50th`[1]),
+                         round(`75th`[1]),
+                         round(`95th`[1]))),
+                     `Upper 95% CI limit` = with(throw_bootCI, c(
+                         round(`50th`[2]),
+                         round(`75th`[2]),
+                         round(`95th`[2]))))
+# Distortion of 95% CI at upper end.
+# Trim upper limit to be within 100th percentile 
+throw_tab[throw_tab$`Upper 95% CI limit` > 100, 4] <- 100
+# Table
+pander(throw_tab, 
+       caption = 'MABC throwing performance (percentile)', justify = 'rrrr')
+# Plot
+ggplot(throw_tab) +
+    aes(y = Percentile, x = `Point estimate`) +
+    geom_errorbarh(aes(xmin = `Lower 95% CI limit`,
+                      xmax = `Upper 95% CI limit`), 
+                   height = 0.4, size = 1) +
+    geom_vline(xintercept = 50, colour = 'red') +
+    coord_cartesian(xlim = c(0, 100)) +
+    geom_point(size = 8) +
+    labs(title = 'MABC throwing performance in 135 HIV+ children',
+         subtitle = '(Confidence limits trimmed to between 0 and 100)',
+         y = 'MABC throwing performance (percentile)\n',
+         x = 'Percentile') +
+    theme(legend.position = 'none')
+```
+
+### Overall
+```{r overall_performance}
+# Complete cases
+nrow(data[!is.na(data$MABC.total.percentile), ])
+# Exploratory plot
+qplot(data = data, y = MABC.total.percentile, x = '', 
+      geom = c('boxplot', 'jitter'), ylim = c(0, 100),
+      main = 'MABC overall', 
+      ylab = 'MABC overall score (percentile)\n') +
+    geom_hline(yintercept = 50, colour = 'red')
+# Summary table
+data %>%
+    summarise(Q25 = quantile(MABC.total.percentile, 0.25),
+              Median = median(MABC.total.percentile),
+              Q75 = quantile(MABC.total.percentile, 0.75)) %>%
+    pander(caption = 'MABC overall score: 3-number summary',
+           justify = 'rrr')
+# Bootstrap 95% CI
+total_boot <- boot(data = data$MABC.total.percentile, 
+              statistic = mabc, 
+              R = 10000)
+# Generate list of 'basic' 95% CI outputs for each quantile
+total_bootCI <- vector('list', length = 3)
+for(i in 1:3) {
+    total_bootCI[[i]] <- boot.ci(total_boot, 
+                                   type = 'basic', 
+                                   index = i)$basic[4:5]
+}
+names(total_bootCI) <- c('50th', '75th', '95th')
+# Summary table
+total_tab <- data_frame(Percentile = c('50th', '75th', '95th'), 
+                     `Point estimate` = with(data, c(
+                         round(quantile(MABC.total.percentile, 0.5)),
+                         round(quantile(MABC.total.percentile, 0.75)),
+                         round(quantile(MABC.total.percentile, 0.95)))),
+                     `Lower 95% CI limit` = with(total_bootCI, c(
+                         round(`50th`[1]),
+                         round(`75th`[1]),
+                         round(`95th`[1]))),
+                     `Upper 95% CI limit` = with(total_bootCI, c(
+                         round(`50th`[2]),
+                         round(`75th`[2]),
+                         round(`95th`[2]))))
+# Distortion of 95% CI at upper end.
+# Trim upper limit to be within 100th percentile 
+total_tab[total_tab$`Upper 95% CI limit` > 100, 4] <- 100
+# Table
+pander(total_tab, 
+       caption = 'MABC overall performance (percentile)', justify = 'rrrr')
+# Plot
+ggplot(total_tab) +
+    aes(y = Percentile, x = `Point estimate`) +
+    geom_errorbarh(aes(xmin = `Lower 95% CI limit`,
+                      xmax = `Upper 95% CI limit`), 
+                   height = 0.4, size = 1) +
+    geom_vline(xintercept = 50, colour = 'red') +
+    coord_cartesian(xlim = c(0, 100)) +
+    geom_point(size = 8) +
+    labs(title = 'MABC overall performance in 135 HIV+ children',
+         subtitle = '(Confidence limits trimmed to between 0 and 100)',
+         y = 'MABC overall performance (percentile)\n',
+         x = 'Percentile') +
+    theme(legend.position = 'none')
+```
+
+### Traffic light
+```{r traffic_light}
+traffic_plot <- data %>%
+    select(MABC.zone) %>%
+    group_by(MABC.zone) %>%
+    summarise(n = n(),
+              percent = round(100 * (n / nrow(.)), 1)) %>%
+    mutate(Zone = factor(MABC.zone, 
+                         levels = c('Green', 'Amber', 'Red'),
+                         labels = c('Green', 'Amber', 'Red'),
+                         ordered = TRUE)) %>%
+    select(Zone, n, percent) %>%
+    add_column(x_value = c(5, 5, 5)) %>%
+    add_column(y_values = c(20, 30, 10))
+# Print table
+pander(traffic_plot[ , 1:3], 
+       caption = 'Summary of MABC traffic light zones', justify = 'lrr')
+# Plot figure
+figure(data = traffic_plot, 
+       xgrid = FALSE, ygrid = FALSE,
+       yaxes = FALSE, xaxes = FALSE, 
+       toolbar_location = NULL,
+       ylim = c(7, 35),
+       xlim = c(1, 6)) %>%
+    ly_points(x = x_value, y = y_values,
+              color = c('orange', 'green', 'red'),
+              size = 3 * percent,
+              hover = 'N: @n <br> Percent: @percent') %>%
+    ly_text(x = c(1, 1, 1), y = y_values,
+            text = c('Green zone', 'Amber zone', 'Red zone')) %>%
+    ly_text(x = c(2, 2, 2), y = y_values,
+            text = sprintf('(N: %d; Percent: %.0f%%):', 
+                           traffic_plot$n, traffic_plot$percent)) 
+```
+
+## Session infomation
+```{r session_info, echo = F, warning = F, message = F}
+pander(sessionInfo())
+```
+
