@@ -1,7 +1,7 @@
 ---
 title: 'HIV-SN in children'
 subtitle: 'Data analysis: Risk factors for SN'
-author: Natalie Benjamin, Joanne Potterton, and Peter Kamerman 
+author: Peter Kamerman 
 date: "`r format(Sys.time(), '%d %B %Y')`"
 output: 
   html_document:
@@ -9,27 +9,25 @@ output:
     highlight: haddock
     code_folding: show
     toc: true
-    toc_depth: 3
+    toc_depth: 4
     toc_float: true
+    df_print: paged
 ---
 
 ```{r setup, include = FALSE}
 # Load libraries
-library(tidyverse)
+library(dplyr)
+library(tidyr)
+library(readr)
+library(ggplot2)
 library(coin)
 library(pander)
 
 # knitr options
 knitr::opts_chunk$set(echo = TRUE,
                warning = FALSE, 
-               message =  FALSE, 
-               cache = TRUE,
-               fig.path = './figures/sn-risk/',
-               tidy = FALSE)
-```
+               message =  FALSE)
 
-
-```{r data_import}
 # Import data
 data <- read_csv('./data/cleaned_data.csv')
 
@@ -37,6 +35,7 @@ data <- read_csv('./data/cleaned_data.csv')
 data <- data %>%
     select(ID,
            Neuropathy,
+           Neuropathy_pin,
            Age.years,
            Sex,
            WAZ,
@@ -57,158 +56,349 @@ tail(data)
 glimpse(data)
 ```
 
-## Predictors
+****
+
+## Prevalence of HIV-SN (pin-prick)
+**Case definition of SN:**  
+
+- _Brief Peripheral Neuropathy Screen (BPNS) + pin-prick_
+
+- _At least one bilateral sign (reduced/absent vibration sense, absent ankle-jerk reflexes, reduced/absent pin-prick)_  
+
+**Case definition of symptomatic SN:** 
+
+- _As above, plus at least one bilateral symptom (pain/aching/burning, tingling/pins-and-needles, numbness)_
+
+### Predictors
 **NOTE:** 
 
-- _Predictors for symptomatic SN not explored because of the very small sample size._
+- _Predictors for symptomatic SN not explored because of the very small sample size._ 
 
-** Examined:** 
+**Examined:**  
 
 - _Age, sex, height for age, weight for age, CD4 T-cell count, and viral load_
 
-```{r sn_predictors}
-############################################################
-#                                                          #
-#                           Age                            #
-#                                                          #
-############################################################
+#### Age
+```{r pin_age}
+# Select data and filter out incomplete cases
+age <- data %>%
+    select(Age.years, Neuropathy_pin) %>%
+    filter(complete.cases(.))
+
+# Plot
+qplot(data = age, x = Neuropathy_pin, y = Age.years, 
+      geom = c('boxplot', 'jitter')) +
+    theme_minimal(base_size = 14) 
+
+# Stats
+wilcox_test(Age.years ~ factor(Neuropathy_pin), 
+            data = age,
+            distribution = 'exact',
+            conf.int = TRUE)
+```
+
+#### Sex
+```{r pin_sex}
+# Select data and filter out incomplete cases
+sex <- data %>%
+    select(Sex, Neuropathy_pin) %>%
+    filter(complete.cases(.)) %>%
+    table()
+
+# Plot
+mosaicplot(sex,
+           cex.axis = 1)
+
+# Stats
+chisq_test(sex,
+           distribution = 'exact')
+```
+
+#### Height
+```{r pin_height}
+# Select data and filter out incomplete cases
+haz <- data %>%
+    select(HAZ, Neuropathy_pin) %>%
+    filter(complete.cases(.))
+
+# Plot
+qplot(data = haz, x = Neuropathy_pin, y = HAZ, 
+      geom = c('boxplot', 'jitter')) +
+    theme_minimal(base_size = 14)
+
+## Stats
+wilcox_test(HAZ ~ factor(Neuropathy_pin),
+            data = haz,
+            distribution = 'exact',
+            conf.int = TRUE)
+```
+
+#### Age
+```{r pin_weight}
+# Select data and filter out incomplete cases
+waz <- data %>%
+    select(WAZ, Neuropathy_pin) %>%
+    filter(complete.cases(.))
+
+# Plot
+qplot(data = waz, x = Neuropathy_pin, y = WAZ, 
+      geom = c('boxplot', 'jitter')) +
+    theme_minimal(base_size = 14)
+
+# Stats
+wilcox_test(WAZ ~ factor(Neuropathy_pin),
+            data = waz,
+            distribution = 'exact',
+            conf.int = TRUE)
+```
+
+#### CD4
+```{r pin_cd4}
+# Select data and filter out incomplete cases
+cd4 <- data %>%
+    select(CD4, Neuropathy_pin) %>%
+    filter(complete.cases(.))
+
+# Plot
+qplot(data = cd4, x = Neuropathy_pin, y = CD4, 
+      geom = c('boxplot', 'jitter')) +
+    theme_minimal(base_size = 14)
+
+## Stats
+wilcox_test(CD4 ~ factor(Neuropathy_pin),
+            data = cd4,
+            distribution = 'exact',
+            conf.int = TRUE)
+```
+
+#### Viral load
+```{r pin_viral_load}
+# Select data and filter out incomplete cases
+vl <- data %>%
+    select(Viral.load, Neuropathy_pin) %>%
+    filter(complete.cases(.)) %>%
+    mutate(log10_viral.load = log10(Viral.load))
+
+# Plot
+qplot(data = vl, x = Neuropathy_pin, y = log10_viral.load, 
+      geom = c('boxplot', 'jitter')) +
+    theme_minimal(base_size = 14)
+
+# Stats
+wilcox_test(log10_viral.load ~ factor(Neuropathy_pin), 
+            data = vl, 
+            distribution = 'exact',
+            conf.int = TRUE)
+```
+
+#### D4T use ever
+```{r pin_d4t_ever}
+# Select data and filter out incomplete cases
+d4t <- data %>%
+    select(d4T.ever, Neuropathy_pin) %>%
+    filter(complete.cases(.)) %>%
+    table()
+# Plot
+mosaicplot(d4t,
+           cex.axis = 1)
+# Stats
+chisq_test(d4t,
+           distribution = 'exact',
+           conf.int = TRUE)
+```
+
+#### ART duration
+```{r pin_art_duration}
+# Select data and filter out incomplete cases
+art.duration <- data %>%
+    select(ART.years, Neuropathy_pin) %>%
+    filter(complete.cases(.))
+
+# Plot
+qplot(data = art.duration, x = Neuropathy_pin, y = ART.years,
+      geom = c('boxplot', 'jitter')) +
+    theme_minimal(base_size = 14)
+
+# Stats
+wilcox_test(ART.years ~ factor(Neuropathy_pin),
+            data = art.duration,
+            distribution = 'exact',
+            conf.int = TRUE)
+```
+
+****
+
+## Prevalence of HIV-SN (BPNS)
+**Case definition of SN:**  
+
+- _Brief Peripheral Neuropathy Screen (BPNS) only_
+
+- _At least one bilateral sign (reduced/absent vibration sense, absent ankle-jerk reflexes)_  
+
+**Case definition of symptomatic SN:** 
+
+- _As above, plus at least one bilateral symptom (pain/aching/burning, tingling/pins-and-needles, numbness)_
+
+### Predictors
+**NOTE:** 
+
+- _Predictors for symptomatic SN not explored because of the very small sample size._  
+
+**Examined:**  
+
+- _Age, sex, height for age, weight for age, CD4 T-cell count, and viral load_
+
+#### Age
+```{r age}
 # Select data and filter out incomplete cases
 age <- data %>%
     select(Age.years, Neuropathy) %>%
     filter(complete.cases(.))
+
 # Plot
 qplot(data = age, x = Neuropathy, y = Age.years, 
-      geom = c('boxplot', 'jitter'))
+      geom = c('boxplot', 'jitter')) +
+    theme_minimal(base_size = 14)
+
 # Stats
 wilcox_test(Age.years ~ factor(Neuropathy), 
             data = age,
             distribution = 'exact',
             conf.int = TRUE)
+```
 
-############################################################
-#                                                          #
-#                           Sex                            #
-#                                                          #
-############################################################
+#### Sex
+```{r sex}
 # Select data and filter out incomplete cases
 sex <- data %>%
     select(Sex, Neuropathy) %>%
     filter(complete.cases(.)) %>%
     table()
+
 # Plot
-mosaicplot(sex)
+mosaicplot(sex,
+           cex.axis = 1)
+
 # Stats
 chisq_test(sex,
            distribution = 'exact')
+```
 
-############################################################
-#                                                          #
-#                      Height for age                      #
-#                                                          #
-############################################################
+#### Height
+```{r height}
 # Select data and filter out incomplete cases
 haz <- data %>%
     select(HAZ, Neuropathy) %>%
     filter(complete.cases(.))
+
 # Plot
 qplot(data = haz, x = Neuropathy, y = HAZ, 
-      geom = c('boxplot', 'jitter'))
+      geom = c('boxplot', 'jitter')) +
+    theme_minimal(base_size = 14)
+
 ## Stats
 wilcox_test(HAZ ~ factor(Neuropathy),
             data = haz,
             distribution = 'exact',
             conf.int = TRUE)
+```
 
-############################################################
-#                                                          #
-#                      Weight for age                      #
-#                                                          #
-############################################################
+#### Age
+```{r weight}
 # Select data and filter out incomplete cases
 waz <- data %>%
     select(WAZ, Neuropathy) %>%
     filter(complete.cases(.))
+
 # Plot
 qplot(data = waz, x = Neuropathy, y = WAZ, 
-      geom = c('boxplot', 'jitter'))
+      geom = c('boxplot', 'jitter')) +
+    theme_minimal(base_size = 14)
+
 # Stats
 wilcox_test(WAZ ~ factor(Neuropathy),
             data = waz,
             distribution = 'exact',
             conf.int = TRUE)
+```
 
-############################################################
-#                                                          #
-#                           CD4                            #
-#                                                          #
-############################################################
+#### CD4
+```{r cd4}
 # Select data and filter out incomplete cases
 cd4 <- data %>%
     select(CD4, Neuropathy) %>%
     filter(complete.cases(.))
+
 # Plot
 qplot(data = cd4, x = Neuropathy, y = CD4, 
-      geom = c('boxplot', 'jitter'))
+      geom = c('boxplot', 'jitter')) +
+    theme_minimal(base_size = 14)
+
 ## Stats
 wilcox_test(CD4 ~ factor(Neuropathy),
             data = cd4,
             distribution = 'exact',
             conf.int = TRUE)
+```
 
-############################################################
-#                                                          #
-#                   (Log10)Viral load                      #
-#                                                          #
-############################################################
+#### Viral load
+```{r viral_load}
 # Select data and filter out incomplete cases
 vl <- data %>%
     select(Viral.load, Neuropathy) %>%
     filter(complete.cases(.)) %>%
     mutate(log10_viral.load = log10(Viral.load))
+
 # Plot
 qplot(data = vl, x = Neuropathy, y = log10_viral.load, 
-      geom = c('boxplot', 'jitter'))
+      geom = c('boxplot', 'jitter')) +
+    theme_minimal(base_size = 14)
+
 # Stats
 wilcox_test(log10_viral.load ~ factor(Neuropathy), 
             data = vl, 
             distribution = 'exact',
             conf.int = TRUE)
+```
 
-############################################################
-#                                                          #
-#                         D4T ever                         #
-#                                                          #
-############################################################
+#### D4T use ever
+```{r d4t_ever}
 # Select data and filter out incomplete cases
 d4t <- data %>%
     select(d4T.ever, Neuropathy) %>%
     filter(complete.cases(.)) %>%
     table()
+
 # Plot
-mosaicplot(d4t)
+mosaicplot(d4t,
+           cex.axis = 1)
+
 # Stats
 chisq_test(d4t,
            distribution = 'exact',
-           conf.int = TRUE)
+           conf.int = TRUE) 
+```
 
-############################################################
-#                                                          #
-#                       ART duration                       #
-#                                                          #
-############################################################
+#### ART duration
+```{r art_duration}
 # Select data and filter out incomplete cases
 art.duration <- data %>%
     select(ART.years, Neuropathy) %>%
     filter(complete.cases(.))
+
 # Plot
 qplot(data = art.duration, x = Neuropathy, y = ART.years,
-      geom = c('boxplot', 'jitter'))
+      geom = c('boxplot', 'jitter')) +
+    theme_minimal(base_size = 14)
+
 # Stats
 wilcox_test(ART.years ~ factor(Neuropathy),
             data = art.duration,
             distribution = 'exact',
             conf.int = TRUE)
 ```
+
+****
 
 ## Session infomation
 ```{r session_info, echo = F, warning = F, message = F}

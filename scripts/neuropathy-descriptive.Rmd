@@ -1,7 +1,7 @@
 ---
 title: 'HIV-SN in children'
 subtitle: 'Descriptive analyses: Neuropathy'
-author: Natalie Benjamin, Joanne Potterton, and Peter Kamerman 
+author: Peter Kamerman 
 date: "`r format(Sys.time(), '%d %B %Y')`"
 output: 
   html_document:
@@ -11,13 +11,16 @@ output:
     toc: true
     toc_depth: 4
     toc_float: true
+    df_print: paged
 ---
 
 ```{r setup, include = FALSE}
-# Load libraries
-library(tidyverse)
+# Load librarieslibrary(dplyr)
+library(dplyr)
+library(tidyr)
+library(readr)
+library(ggplot2)
 library(stringr)
-library(knitr)
 library(pander)
 library(boot)
 
@@ -25,16 +28,8 @@ library(boot)
 knitr::opts_chunk$set(echo = TRUE,
                warning = FALSE, 
                message =  FALSE, 
-               cache = TRUE,
-               fig.path = './figures/neuropathy-descriptive/',
-               fig.height = 7,
-               fig.width = 7,
-               fig.align = 'center',
-               tidy = FALSE)
-```
+               fig.align = 'center')
 
-
-```{r data_import}
 # Import data
 data <- read_csv('./data/cleaned_data.csv')
 
@@ -43,14 +38,17 @@ data <- select(data,
                ID,
                starts_with('BPNS'), 
                starts_with('Other'),
+               ends_with('.RL'),
                -ends_with('.R'),
                -ends_with('.L'),
                Symptoms, 
-               Neuropathy, 
-               Symp.Neuropathy)
+               Neuropathy,
+               Neuropathy_pin,
+               Symp.Neuropathy,
+               Symp.Neuropathy_pin)
 ```
 
-### Quick look
+## Quick look at the data
 ```{r quick_look}
 # 'Top-n-tail' data
 head(data)
@@ -60,10 +58,183 @@ tail(data)
 glimpse(data)
 ```
 
-## Prevalence of HIV-SN
+****
+
+## Prevalence of HIV-SN (pin-prick)
 **Case definition of SN:**  
 
-- _At least one bilateral sign (reduced/absent vibration sense, absent ankle-jerk reflexes)_  
+- _Brief Peripheral Neuropathy Screen (BPNS) + pin-prick_
+
+- _At least one bilateral sign (reduced/absent vibration sense, absent ankle-jerk reflexes, reduced/absent pin-prick)_  
+
+**Case definition of symptomatic SN:** 
+
+- _As above, plus at least one bilateral symptom (pain/aching/burning, tingling/pins-and-needles, numbness)_
+
+### Boot functions
+```{r pin_boot_functions}
+############################################################
+#                                                          #
+#                      Boot functions                      #
+#                                                          #
+############################################################
+# Use package 'boot' to calculate bootstrap 95%CI
+
+## Any SN
+sn_prev <- function(data, i) {
+    dat <- data[i, ]
+    len <- dat %>%
+        select(Neuropathy_pin) %>%
+        filter(Neuropathy_pin == 'Yes') %>%
+        nrow()
+    len2 <- nrow(dat)
+    prev <- 100 * len / len2
+    prev
+}
+
+## Symptomatic SN
+symp.sn_prev <- function(data, i) {
+    dat <- data[i,]
+    len <- dat %>%
+        select(Symp.Neuropathy_pin) %>%
+        filter(Symp.Neuropathy_pin == 'Yes') %>%
+        nrow()
+    len2 <- nrow(dat)
+    prev <- 100 * len / len2
+    return(prev)
+}
+```
+
+### Prevalence summaries
+#### SN prevalence (whole cohort) 
+```{r pin_sn_prevalence}
+# Counts
+sn_point <- data %>%  
+    group_by(Neuropathy_pin) %>%  
+    summarise(N = n(), Percent = 100 * (n() / nrow(data)))
+
+pander(sn_point[ , 1:2], 
+       caption = 'SN vs SN-free (count)', justify = 'lr')
+
+# Bootstrap 95% CI
+sn_boot <- boot(data = data, 
+              statistic = sn_prev, 
+              R = 1000)
+
+sn_bootCI <- boot.ci(sn_boot, type = 'basic')
+
+# Summary table
+sn_tab <- data_frame(Group = 'Neuropathy_pin',
+                     `Point prevalence` = round(sn_point$Percent[2], 1),
+                     `Lower 95% CI limit` = round(sn_bootCI$basic[4], 1),
+                     `Upper 95% CI limit` = round(sn_bootCI$basic[5], 1)) 
+pander(sn_tab[ , 2:4], 
+       caption = 'Prevalence of SN (%)', justify = 'rrr')
+```
+
+#### Symptomatic SN+ (SN+ cohort only)
+```{r pin_symp_sn_prevalence}
+# Subset out the SN+ participants
+data.sn_only <- data %>%
+    filter(Neuropathy_pin == 'Yes')
+
+# Counts
+symp.sn_point <- data.sn_only %>%  
+    group_by(Symp.Neuropathy_pin) %>%  
+    summarise(N = n(), Percent = 100 * (n() / nrow(data.sn_only)))
+
+pander(symp.sn_point[ , 1:2], 
+       caption = 'Symptomatic SN (SN+ only, count)', justify = 'lr')
+
+# Bootstrap 95% CI
+symp.sn_boot <- boot(data = data.sn_only, 
+                     statistic = symp.sn_prev, 
+                     R = 1000)
+
+symp.sn_bootCI <- boot.ci(symp.sn_boot, type = 'basic')
+
+# Summary table
+symp.sn_tab <- data_frame(Group = 'Symptomatic HIV-SN',
+                          `Point prevalence` = round(symp.sn_point$Percent[2], 1),
+                          `Lower 95% CI limit` = round(symp.sn_bootCI$basic[4], 1),
+                          `Upper 95% CI limit` = round(symp.sn_bootCI$basic[5], 1))
+pander(symp.sn_tab[ , 2:4], 
+       caption = 'Prevalence of Symptomatic SN (SN+ only, %)', justify = 'rrr')
+```
+
+### Characteristics of symptomatic SN
+```{r pin_symptoms}
+############################################################
+#                                                          #
+#     Not very informative because of the small number     #
+#         (n = 12) of children with symptomatic SN          #
+#                                                          #
+############################################################
+# Filter out only those with symptomatic SN (primary definition)
+symptomatic_sn <- data %>%
+    filter(Symp.Neuropathy_pin == 'Yes')
+
+# Extract symptoms
+symptoms_sn <- symptomatic_sn %>%
+    select(BPNS.numbness, BPNS.prev.pain, BPNS.current.pain, BPNS.pin.n.needles,
+           Other.symp.itching, Other.symp.cramping, Other.symp.painful.cold) %>%
+    rename(Numbness = BPNS.numbness, 
+           `Previous pain` = BPNS.prev.pain,
+           `Current pain` = BPNS.current.pain, 
+           `Pins and needles` = BPNS.pin.n.needles,
+           Itch = Other.symp.itching, 
+           Cramping = Other.symp.cramping, 
+           `Painful cold` = Other.symp.painful.cold)
+
+# Table point estimates of symptom prevalences (%)
+symptom_tab <- symptoms_sn %>%
+    summarise_each(funs(round(sum(. == 'Yes', na.rm = TRUE)))) %>%
+    gather(key = key,
+           value = n) %>%
+    mutate(percent = round(n / nrow(symptomatic_sn) * 100)) %>%
+    arrange(desc(n))
+
+# Table
+pander(symptom_tab, 
+       caption = 'Prevalence (%) of symptoms in 12 children with symptomatic HIV-SN', 
+       justify = 'lrr', split.tables = Inf)
+```
+
+### Characteristics of SN signs
+```{r pin_signs}
+# Filter out only those with SN
+sn_signs <- data %>%
+    filter(Neuropathy_pin == 'Yes')
+
+# Extract signs
+signs_sn <- sn_signs %>%
+    select(BPNS.absent.reflex.RL, BPNS.reduced.vibration.RL, Reduced.pin.prick.RL) %>%
+    rename(`Absent reflexes` = BPNS.absent.reflex.RL, 
+           `Absent/Reduced vibration sense` = BPNS.reduced.vibration.RL,
+           `Absent/reduced pin-prick sense` = Reduced.pin.prick.RL)
+
+# Table point estimates of signs prevalences (%)
+signs_tab <- signs_sn %>%
+    summarise_each(funs(round(sum(. == 'Yes', na.rm = TRUE)))) %>%
+    gather(key = key,
+           value = n) %>%
+    mutate(percent = round(n / nrow(signs_sn) * 100)) %>%
+    arrange(desc(n))
+
+# Table
+pander(signs_tab, 
+       caption = 'Prevalence (%) of signs in 34 children with HIV-SN', 
+       justify = 'lrr', split.tables = Inf)
+```
+
+****
+
+## Prevalence of HIV-SN (BPNS)
+**Case definition of SN:**  
+
+- _Brief Peripheral Neuropathy Screen (BPNS) only_
+
+- _At least one bilateral sign (reduced/absent vibration sense, absent ankle-jerk reflexes; NB: no pin-prick)_  
 
 **Case definition of symptomatic SN:** 
 
@@ -77,6 +248,7 @@ glimpse(data)
 #                                                          #
 ############################################################
 # Use package 'boot' to calculate bootstrap 95%CI
+
 ## Any SN
 sn_prev <- function(data, i) {
     dat <- data[i, ]
@@ -109,33 +281,25 @@ symp.sn_prev <- function(data, i) {
 sn_point <- data %>%  
     group_by(Neuropathy) %>%  
     summarise(N = n(), Percent = 100 * (n() / nrow(data)))
+
 pander(sn_point[ , 1:2], 
        caption = 'SN vs SN-free (count)', justify = 'lr')
+
 # Bootstrap 95% CI
 sn_boot <- boot(data = data, 
               statistic = sn_prev, 
-              R = 10000)
+              R = 1000)
+
 sn_bootCI <- boot.ci(sn_boot, type = 'basic')
+
 # Summary table
 sn_tab <- data_frame(Group = 'Neuropathy',
                      `Point prevalence` = round(sn_point$Percent[2], 1),
                      `Lower 95% CI limit` = round(sn_bootCI$basic[4], 1),
                      `Upper 95% CI limit` = round(sn_bootCI$basic[5], 1)) 
+
 pander(sn_tab[ , 2:4], 
        caption = 'Prevalence of SN (%)', justify = 'rrr')
-# Plot
-ggplot(sn_tab) +
-    aes(x = Group, y = `Point prevalence`) +
-    geom_errorbar(aes(ymin = `Lower 95% CI limit`,
-                      ymax = `Upper 95% CI limit`),
-                  width = 0.2, size = 1) +
-    coord_cartesian(ylim = c(0, 100)) +
-    geom_point(size = 10) +
-    labs(title = 'Prevalence (95% CI) of HIV-SN\nin 135 HIV+ children',
-         y = 'Prevalence (%)\n',
-         x = 'HIV-SN') +
-    theme(legend.position = 'none',
-          axis.text.x = element_blank())
 ```
 
 #### Symptomatic SN+ (SN+ cohort only)
@@ -143,40 +307,33 @@ ggplot(sn_tab) +
 # Subset out the SN+ participants
 data.sn_only <- data %>%
     filter(Neuropathy == 'Yes')
+
 # Counts
 symp.sn_point <- data.sn_only %>%  
     group_by(Symp.Neuropathy) %>%  
     summarise(N = n(), Percent = 100 * (n() / nrow(data.sn_only)))
+
 pander(symp.sn_point[ , 1:2], 
        caption = 'Symptomatic SN (SN+ only, count)', justify = 'lr')
+
 # Bootstrap 95% CI
 symp.sn_boot <- boot(data = data.sn_only, 
                      statistic = symp.sn_prev, 
-                     R = 10000)
+                     R = 1000)
+
 symp.sn_bootCI <- boot.ci(symp.sn_boot, type = 'basic')
+
 # Summary table
 symp.sn_tab <- data_frame(Group = 'Symptomatic HIV-SN',
                           `Point prevalence` = round(symp.sn_point$Percent[2], 1),
                           `Lower 95% CI limit` = round(symp.sn_bootCI$basic[4], 1),
                           `Upper 95% CI limit` = round(symp.sn_bootCI$basic[5], 1))
+
 pander(symp.sn_tab[ , 2:4], 
        caption = 'Prevalence of Symptomatic SN (SN+ only, %)', justify = 'rrr')
-# Plot
-ggplot(symp.sn_tab) +
-    aes(x = Group, y = `Point prevalence`) +
-    geom_errorbar(aes(ymin = `Lower 95% CI limit`,
-                      ymax = `Upper 95% CI limit`),
-                  width = 0.2, size = 1) +
-    coord_cartesian(ylim = c(0, 100)) +
-    geom_point(size = 10) +
-    labs(title = 'Prevalence (95% CI) of symptomatic HIV-SN\nin 18 HIV+ children with SN',
-         y = 'Prevalence (%)\n',
-         x = 'Symptomatic HIV-SN\n(SN+ only)') +
-    theme(legend.position = 'none',
-          axis.text.x = element_blank())
 ```
 
-## Characteristics of symptomatic SN
+### Characteristics of symptomatic SN
 ```{r symptoms}
 ############################################################
 #                                                          #
@@ -187,22 +344,11 @@ ggplot(symp.sn_tab) +
 # Filter out only those with symptomatic SN (primary definition)
 symptomatic_sn <- data %>%
     filter(Symp.Neuropathy == 'Yes')
+
 # Extract symptoms
 symptoms_sn <- symptomatic_sn %>%
     select(BPNS.numbness, BPNS.prev.pain, BPNS.current.pain, BPNS.pin.n.needles,
-           Other.symp.itching, Other.symp.cramping, Other.symp.painful.cold)
-# Table point estimates of symptom prevalences (%)
-symptom_tab <- symptoms_sn %>%
-    map_df(~ round(sum(.x == 'Yes', na.rm = TRUE) / length(.x) * 100, 1)) %>%
-    as.matrix() %>%
-    as.table()
-# Reorder
-symptom_tab2 <- symptom_tab[, order(-symptom_tab)]
-# Convert back to df
-symptom_tab3 <- symptom_tab2 %>%
-    t() %>%
-    data.frame() %>%
-    tbl_df() %>%
+           Other.symp.itching, Other.symp.cramping, Other.symp.painful.cold) %>%
     rename(Numbness = BPNS.numbness, 
            `Previous pain` = BPNS.prev.pain,
            `Current pain` = BPNS.current.pain, 
@@ -210,37 +356,48 @@ symptom_tab3 <- symptom_tab2 %>%
            Itch = Other.symp.itching, 
            Cramping = Other.symp.cramping, 
            `Painful cold` = Other.symp.painful.cold)
-pander(symptom_tab3, 
+
+# Table point estimates of symptom prevalences (%)
+symptom_tab <- symptoms_sn %>%
+    summarise_each(funs(round(sum(. == 'Yes', na.rm = TRUE)))) %>%
+    gather(key = key,
+           value = n) %>%
+    mutate(percent = round(n / nrow(symptomatic_sn) * 100)) %>%
+    arrange(desc(n))#/ length(.x) * 100, 1)) 
+
+# Table
+pander(symptom_tab, 
        caption = 'Prevalence (%) of symptoms in 5 children with symptomatic HIV-SN', 
-       justify = 'rrrrrrr', split.tables = Inf)
+       justify = 'lrr', split.tables = Inf)
 ```
 
-## Characteristics of SN signs
+### Characteristics of SN signs
 ```{r signs}
 # Filter out only those with SN
 sn_signs <- data %>%
     filter(Neuropathy == 'Yes')
+
 # Extract signs
 signs_sn <- sn_signs %>%
-    select(BPNS.absent.reflex.RL, BPNS.reduced.vibration.RL)
-# Table point estimates of signs prevalences (%)
-signs_tab <- signs_sn %>%
-    map_df(~ round(sum(.x == 'Yes', na.rm = TRUE) / length(.x) * 100, 1)) %>%
-    as.matrix() %>%
-    as.table()
-# Reorder
-signs_tab2 <- signs_tab[, order(-signs_tab)]
-# Convert back to df
-signs_tab3 <- signs_tab2 %>%
-    t() %>%
-    data.frame() %>%
-    tbl_df() %>%
+    select(BPNS.absent.reflex.RL, BPNS.reduced.vibration.RL) %>%
     rename(`Absent reflexes` = BPNS.absent.reflex.RL, 
            `Absent/Reduced vibration sense` = BPNS.reduced.vibration.RL)
-pander(signs_tab3, 
-       caption = 'Prevalence (%) of signs in 18 children with symptomatic HIV-SN', 
-       justify = 'rr', split.tables = Inf)
+
+# Table point estimates of signs prevalences (%)
+signs_tab <- signs_sn %>%
+    summarise_each(funs(round(sum(. == 'Yes', na.rm = TRUE)))) %>%
+    gather(key = key,
+           value = n) %>%
+    mutate(percent = round(n / nrow(signs_sn) * 100)) %>%
+    arrange(desc(n))
+
+# Table
+pander(signs_tab, 
+       caption = 'Prevalence (%) of signs in 18 children with HIV-SN', 
+       justify = 'lrr', split.tables = Inf)
 ```
+
+****
 
 ## Session infomation
 ```{r session_info, echo = F, warning = F, message = F}

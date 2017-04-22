@@ -16,9 +16,11 @@ output:
 
 ```{r setup, include = FALSE}
 # Load libraries
+library(purrr)
 library(dplyr)
 library(tidyr)
 library(tibble)
+library(stringr)
 library(readr)
 library(forcats)
 library(ggplot2)
@@ -45,70 +47,69 @@ pal <- RColorBrewer::brewer.pal(9, 'YlOrBr')[3:9]
 
 # Generate new columns placing percentiles into categories
 data <- data %>%
-    mutate(manual.dex.summary = case_when(
-        .$MABC.manual.dex.percentile <= 5 ~ '5th',
-        .$MABC.manual.dex.percentile > 5 & 
-            .$MABC.manual.dex.percentile <= 10 ~ '10th',
-        .$MABC.manual.dex.percentile > 10 & 
-            .$MABC.manual.dex.percentile <= 25 ~ '25th',
-        .$MABC.manual.dex.percentile > 25 & 
-            .$MABC.manual.dex.percentile <= 50 ~ '50th',
-        .$MABC.manual.dex.percentile > 50 & 
-            .$MABC.manual.dex.percentile <= 75 ~ '75th',
-        .$MABC.manual.dex.percentile > 75 & 
-            .$MABC.manual.dex.percentile <= 95 ~ '95th',
-        .$MABC.manual.dex.percentile > 95 & 
-            .$MABC.manual.dex.percentile <= 100 ~ '100th'
-    )) %>%
-    mutate(throw.summary = case_when(
-        .$MABC.throw.percentile <= 5 ~ '5th',
-        .$MABC.throw.percentile > 5 & 
-            .$MABC.throw.percentile <= 10 ~ '10th',
-        .$MABC.throw.percentile > 10 & 
-            .$MABC.throw.percentile <= 25 ~ '25th',
-        .$MABC.throw.percentile > 25 & 
-            .$MABC.throw.percentile <= 50 ~ '50th',
-        .$MABC.throw.percentile > 50 & 
-            .$MABC.throw.percentile <= 75 ~ '75th',
-        .$MABC.throw.percentile > 75 & 
-            .$MABC.throw.percentile <= 95 ~ '95th',
-        .$MABC.throw.percentile > 95 & 
-            .$MABC.throw.percentile <= 100 ~ '100th'
-    )) %>%
-    mutate(balance.summary = case_when(
-        .$MABC.balance.percentile <= 5 ~ '5th',
-        .$MABC.balance.percentile > 5 & 
-            .$MABC.balance.percentile <= 10 ~ '10th',
-        .$MABC.balance.percentile > 10 & 
-            .$MABC.balance.percentile <= 25 ~ '25th',
-        .$MABC.balance.percentile > 25 & 
-            .$MABC.balance.percentile <= 50 ~ '50th',
-        .$MABC.balance.percentile > 50 & 
-            .$MABC.balance.percentile <= 75 ~ '75th',
-        .$MABC.balance.percentile > 75 & 
-            .$MABC.balance.percentile <= 95 ~ '95th',
-        .$MABC.balance.percentile > 95 & 
-            .$MABC.balance.percentile <= 100 ~ '100th'
-    )) %>%
-    mutate(total.summary = case_when(
-        .$MABC.total.percentile <= 5 ~ '5th',
-        .$MABC.total.percentile > 5 & 
-            .$MABC.total.percentile <= 10 ~ '10th',
-        .$MABC.total.percentile > 10 & 
-            .$MABC.total.percentile <= 25 ~ '25th',
-        .$MABC.total.percentile > 25 & 
-            .$MABC.total.percentile <= 50 ~ '50th',
-        .$MABC.total.percentile > 50 & 
-            .$MABC.total.percentile <= 75 ~ '75th',
-        .$MABC.total.percentile > 75 & 
-            .$MABC.total.percentile <= 95 ~ '95th',
-        .$MABC.total.percentile > 95 & 
-            .$MABC.total.percentile <= 100 ~ '100th'
-    ))
+    mutate(manual.dex.5th = ifelse(MABC.manual.dex.percentile <= 5,
+                                   yes = 'yes', no = 'no'),
+           manual.dex.10th = ifelse(MABC.manual.dex.percentile <= 10,
+                                   yes = 'yes', no = 'no'),
+           manual.dex.25th = ifelse(MABC.manual.dex.percentile <= 25,
+                                   yes = 'yes', no = 'no'),
+           manual.dex.50th = ifelse(MABC.manual.dex.percentile <= 50,
+                                   yes = 'yes', no = 'no'),
+           manual.dex.75th = ifelse(MABC.manual.dex.percentile <= 75,
+                                   yes = 'yes', no = 'no'),
+           manual.dex.95th = ifelse(MABC.manual.dex.percentile <= 95,
+                                   yes = 'yes', no = 'no'),
+           manual.dex.99th = ifelse(MABC.manual.dex.percentile <= 99,
+                                   yes = 'yes', no = 'no')) %>%
+    mutate(throw.5th = ifelse(MABC.throw.percentile <= 5,
+                                   yes = 'yes', no = 'no'),
+           throw.10th = ifelse(MABC.throw.percentile <= 10,
+                                   yes = 'yes', no = 'no'),
+           throw.25th = ifelse(MABC.throw.percentile <= 25,
+                                   yes = 'yes', no = 'no'),
+           throw.50th = ifelse(MABC.throw.percentile <= 50,
+                                   yes = 'yes', no = 'no'),
+           throw.75th = ifelse(MABC.throw.percentile <= 75,
+                                   yes = 'yes', no = 'no'),
+           throw.95th = ifelse(MABC.throw.percentile <= 95,
+                                   yes = 'yes', no = 'no'),
+           throw.99th = ifelse(MABC.throw.percentile <= 99,
+                                   yes = 'yes', no = 'no')) %>%
+    mutate(balance.5th = ifelse(MABC.balance.percentile <= 5,
+                                   yes = 'yes', no = 'no'),
+           balance.10th = ifelse(MABC.balance.percentile <= 10,
+                                   yes = 'yes', no = 'no'),
+           balance.25th = ifelse(MABC.balance.percentile <= 25,
+                                   yes = 'yes', no = 'no'),
+           balance.50th = ifelse(MABC.balance.percentile <= 50,
+                                   yes = 'yes', no = 'no'),
+           balance.75th = ifelse(MABC.balance.percentile <= 75,
+                                   yes = 'yes', no = 'no'),
+           balance.95th = ifelse(MABC.balance.percentile <= 95,
+                                   yes = 'yes', no = 'no'),
+           balance.99th = ifelse(MABC.balance.percentile <= 99,
+                                   yes = 'yes', no = 'no')) %>%
+    mutate(total.5th = ifelse(MABC.total.percentile <= 5,
+                                   yes = 'yes', no = 'no'),
+           total.10th = ifelse(MABC.total.percentile <= 10,
+                                   yes = 'yes', no = 'no'),
+           total.25th = ifelse(MABC.total.percentile <= 25,
+                                   yes = 'yes', no = 'no'),
+           total.50th = ifelse(MABC.total.percentile <= 50,
+                                   yes = 'yes', no = 'no'),
+           total.75th = ifelse(MABC.total.percentile <= 75,
+                                   yes = 'yes', no = 'no'),
+           total.95th = ifelse(MABC.total.percentile <= 95,
+                                   yes = 'yes', no = 'no'),
+           total.99th = ifelse(MABC.total.percentile <= 99,
+                                   yes = 'yes', no = 'no'))
     
 ```
 
-### Quick look
+## Quick look
+
+**Data are reported as age-adjusted percentile scores**
+
 ```{r quick_look}
 # 'Top-n-tail' data
 head(data)
@@ -118,10 +119,9 @@ tail(data)
 glimpse(data)
 ```
 
-## Motor performance
-**Data are reported as age-adjusted percentile scores**
+## Performance domains
 
-### Boot functions
+### Boot function
 ```{r boot_functions}
 ############################################################
 #                                                          #
@@ -130,18 +130,12 @@ glimpse(data)
 ############################################################
 # Use package 'boot' to bootstrap 95%CI of percent children in specified percentiles
 mabc <- function(data, i) {
-    dat_percentiles <- vector('numeric', length = 7)
-    percentiles <- c('5th', '10th', '25th', '50th', '75th', '95th', '100th')
     dat <- data[i]
-    for(j in 1:7) {
-        dat_percentiles[[j]] <- 
-            round(sum(dat == percentiles[[j]], rm.na = TRUE) / length(dat) * 100, 1)
-    }
-    return(dat_percentiles)
+    dat_percent <- round(sum(dat == 'yes', rm.na = TRUE) / length(dat) * 100, 1)
+    return(dat_percent)
 }
 ```
 
-## Motor performance summaries
 ### Dexterity
 ```{r dexterity}
 # Complete cases
@@ -169,55 +163,60 @@ qplot(data = data, y = MABC.manual.dex.percentile, x = '',
 # Summary table
 dex_tab <- data %>%
     select(ID, 
-           manual.dex.summary) %>%
-    rename(Percentile = manual.dex.summary) %>%
-    group_by(Percentile) %>%
-    summarise(Count = n(),
-              Percent = round(Count / nrow(data) * 100, 1)) %>%
-    mutate(order = case_when(
-        .$Percentile == '5th' ~ 1,
-        .$Percentile == '10th' ~ 2,
-        .$Percentile == '25th' ~ 3,
-        .$Percentile == '50th' ~ 4,
-        .$Percentile == '75th' ~ 5,
-        .$Percentile == '95th' ~ 6,
-        .$Percentile == '100th' ~ 7
-    )) %>%
-    arrange(order) %>%
-    select(-order)
+           starts_with('manual.dex')) %>%
+    gather(key = Percentile,
+           value = Present,
+           -ID) %>%
+    separate(col = Percentile, 
+             into = c('extra', 'extra2', 'Percentile'),
+             sep = '\\.') %>%
+    select(-starts_with('extra')) %>%
+    group_by(Percentile, Present) %>%
+    summarise(`Cumulative count` = n(),
+              `Cumulative percent` = round(sum(Present == 'yes') / nrow(data) * 100, 1)) %>%
+    ungroup() %>%
+    filter(Present == 'yes') %>%
+    select(Percentile, `Cumulative count`, `Cumulative percent`) %>%
+    mutate(Percentile = 
+               fct_relevel(Percentile,
+                           '5th', '10th', '25th', '50th', '75th', '95th', '99th')) %>%
+    arrange(Percentile) %>%
+    mutate(Percentile = as.character(Percentile))
 
-# Bootstrap 95% CI
-dex_boot <- boot(data = data_dex$manual.dex.summary, 
-              statistic = mabc, 
-              R = 1000)
+# Bootstrap
+dex_boot <- data %>%
+    select(starts_with('manual.dex')) %>%
+    # Apply bootstrap function
+    map(~boot(., statistic = mabc, R = 1000)) %>%
+    # Generate CI
+    map(~boot.ci(., type = 'basic')) %>%
+    # Remove NULL elements
+    .[sapply(., Negate(is.null))] %>%
+    as_data_frame() %>%
+    # Extract CI
+    dmap(~paste(round(.$basic[4], 1), ' to ', round(.$basic[5], 1))) %>%
+    # Get ready for join
+    gather(key = Percentile,
+           value = '95% CI') %>%
+    separate(col = Percentile, 
+             into = c('extra', 'extra2', 'Percentile'),
+             sep = '\\.') %>%
+    select(-starts_with('extra')) %>%
+    mutate(Percentile = 
+               fct_relevel(Percentile,
+                           '5th', '10th', '25th', '50th', '75th', '95th', '99th')) %>%
+    arrange(Percentile) %>%
+    mutate(Percentile = as.character(Percentile)) %>%
+    # Fix maths > 100% issue
+    mutate(`95% CI` = str_replace(`95% CI`,
+                                  pattern = '10*.*$',
+                                  replacement = '100.0'))
 
-# Generate list of 'basic' 95% CI outputs for each quantile
-dex_bootCI <- vector('list', length = 7)
-
-for(i in 1:7) {
-    dex_bootCI[[i]] <- boot.ci(dex_boot, 
-                               type = 'basic', 
-                               index = i)$basic[4:5]
-}
-
-# Get length of table 
-dex_length <- nrow(dex_tab)
-
-# Define vector
-dex_conf <- vector(mode = 'character', length = dex_length)
-
-# Fill vector
-for(k in 1:dex_length) {
-    dex_conf[[k]] <- paste(round(dex_bootCI[[k]][[1]], 1), 
-                           round(dex_bootCI[[k]][[2]], 1),
-                           sep = ' to ')
-}
-
-# Add new column to table
+# Join
 dex_tab <- dex_tab %>%
-    cbind(dex_conf) %>%
-    rename('95% CI' = dex_conf)
+    left_join(dex_boot, by = 'Percentile')
 
+# Table
 pander(dex_tab, 
        caption = 'MABC manual dexterity performance', 
        justify = 'lrrr')
@@ -248,58 +247,62 @@ qplot(data = data, y = MABC.balance.percentile, x = '',
           axis.title.x = element_blank())
 
 # Summary table
-dex_tab <- data %>%
+balance_tab <- data %>%
     select(ID, 
-           balance.summary) %>%
-    rename(Percentile = balance.summary) %>%
-    group_by(Percentile) %>%
-    summarise(Count = n(),
-              Percent = round(Count / nrow(data) * 100, 1)) %>%
-    mutate(order = case_when(
-        .$Percentile == '5th' ~ 1,
-        .$Percentile == '10th' ~ 2,
-        .$Percentile == '25th' ~ 3,
-        .$Percentile == '50th' ~ 4,
-        .$Percentile == '75th' ~ 5,
-        .$Percentile == '95th' ~ 6,
-        .$Percentile == '100th' ~ 7
-    )) %>%
-    arrange(order) %>%
-    select(-order)
+           starts_with('balance')) %>%
+    gather(key = Percentile,
+           value = Present,
+           -ID) %>%
+    separate(col = Percentile, 
+             into = c('extra', 'Percentile'),
+             sep = '\\.') %>%
+    select(-extra) %>%
+    group_by(Percentile, Present) %>%
+    summarise(`Cumulative count` = n(),
+              `Cumulative percent` = round(sum(Present == 'yes') / nrow(data) * 100, 1)) %>%
+    ungroup() %>%
+    filter(Present == 'yes') %>%
+    select(Percentile, `Cumulative count`, `Cumulative percent`) %>%
+    mutate(Percentile = 
+               fct_relevel(Percentile,
+                           '5th', '10th', '25th', '50th', '75th', '95th', '99th')) %>%
+    arrange(Percentile) %>%
+    mutate(Percentile = as.character(Percentile))
 
-# Bootstrap 95% CI
-dex_boot <- boot(data = data_balance$balance.summary, 
-              statistic = mabc, 
-              R = 1000)
+# Bootstrap
+balance_boot <- data %>%
+    select(starts_with('balance')) %>%
+    # Apply bootstrap function
+    map(~boot(., statistic = mabc, R = 1000)) %>%
+    # Generate CI
+    map(~boot.ci(., type = 'basic')) %>%
+    # Remove NULL elements
+    .[sapply(., Negate(is.null))] %>%
+    as_data_frame() %>%
+    # Extract CI
+    dmap(~paste(round(.$basic[4], 1), ' to ', round(.$basic[5], 1))) %>%
+    # Get ready for join
+    gather(key = Percentile,
+           value = '95% CI') %>%
+    separate(col = Percentile, 
+             into = c('extra', 'Percentile'),
+             sep = '\\.') %>%
+    select(-extra) %>%
+    mutate(Percentile = 
+               fct_relevel(Percentile,
+                           '5th', '10th', '25th', '50th', '75th', '95th', '99th')) %>%
+    arrange(Percentile) %>%
+    mutate(Percentile = as.character(Percentile)) %>%
+    # Fix maths > 100% issue
+    mutate(`95% CI` = str_replace(`95% CI`,
+                                  pattern = '10[0-9]\\.[0-9]',
+                                  replacement = '100.0'))
 
-# Generate list of 'basic' 95% CI outputs for each quantile
-dex_bootCI <- vector('list', length = 7)
+# Join
+balance_tab <- balance_tab %>%
+    left_join(balance_boot, by = 'Percentile')
 
-for(i in 1:7) {
-    dex_bootCI[[i]] <- boot.ci(dex_boot, 
-                               type = 'basic', 
-                               index = i)$basic[4:5]
-}
-
-# Get length of table 
-dex_length <- nrow(dex_tab)
-
-# Define vector
-dex_conf <- vector(mode = 'character', length = dex_length)
-
-# Fill vector
-for(k in 1:dex_length) {
-    dex_conf[[k]] <- paste(round(dex_bootCI[[k]][[1]], 1), 
-                           round(dex_bootCI[[k]][[2]], 1),
-                           sep = ' to ')
-}
-
-# Add new column to table
-dex_tab <- dex_tab %>%
-    cbind(dex_conf) %>%
-    rename('95% CI' = dex_conf)
-
-pander(dex_tab, 
+pander(balance_tab, 
        caption = 'MABC Balance performance', 
        justify = 'lrrr')
 ```
@@ -329,59 +332,64 @@ qplot(data = data, y = MABC.throw.percentile, x = '',
           axis.title.x = element_blank())
 
 # Summary table
-dex_tab <- data %>%
+throw_tab <- data %>%
     select(ID, 
-           throw.summary) %>%
-    rename(Percentile = throw.summary) %>%
-    group_by(Percentile) %>%
-    summarise(Count = n(),
-              Percent = round(Count / nrow(data) * 100, 1)) %>%
-    mutate(order = case_when(
-        .$Percentile == '5th' ~ 1,
-        .$Percentile == '10th' ~ 2,
-        .$Percentile == '25th' ~ 3,
-        .$Percentile == '50th' ~ 4,
-        .$Percentile == '75th' ~ 5,
-        .$Percentile == '95th' ~ 6,
-        .$Percentile == '100th' ~ 7
-    )) %>%
-    arrange(order) %>%
-    select(-order)
+           starts_with('throw')) %>%
+    gather(key = Percentile,
+           value = Present,
+           -ID) %>%
+    separate(col = Percentile, 
+             into = c('extra', 'Percentile'),
+             sep = '\\.') %>%
+    select(-extra) %>%
+    group_by(Percentile, Present) %>%
+    summarise(`Cumulative count` = n(),
+              `Cumulative percent` = round(sum(Present == 'yes') / nrow(data) * 100, 1)) %>%
+    ungroup() %>%
+    filter(Present == 'yes') %>%
+    select(Percentile, `Cumulative count`, `Cumulative percent`) %>%
+    mutate(Percentile = 
+               fct_relevel(Percentile,
+                           '5th', '10th', '25th', '50th', '75th', '95th', '99th')) %>%
+    arrange(Percentile) %>%
+    mutate(Percentile = as.character(Percentile))
 
-# Bootstrap 95% CI
-dex_boot <- boot(data = data_throw$throw.summary, 
-              statistic = mabc, 
-              R = 1000)
+# Bootstrap
+throw_boot <- data %>%
+    select(starts_with('throw')) %>%
+    # Apply bootstrap function
+    map(~boot(., statistic = mabc, R = 1000)) %>%
+    # Generate CI
+    map(~boot.ci(., type = 'basic')) %>%
+    # Remove NULL elements
+    .[sapply(., Negate(is.null))] %>%
+    as_data_frame() %>%
+    # Extract CI
+    dmap(~paste(round(.$basic[4], 1), ' to ', round(.$basic[5], 1))) %>%
+    # Get ready for join
+    gather(key = Percentile,
+           value = '95% CI') %>%
+    separate(col = Percentile, 
+             into = c('extra', 'Percentile'),
+             sep = '\\.') %>%
+    select(-extra) %>%
+    mutate(Percentile = 
+               fct_relevel(Percentile,
+                           '5th', '10th', '25th', '50th', '75th', '95th', '99th')) %>%
+    arrange(Percentile) %>%
+    mutate(Percentile = as.character(Percentile)) %>%
+    # Fix maths > 100% issue
+    mutate(`95% CI` = str_replace(`95% CI`,
+                                  pattern = '10[0-9]\\.[0-9]',
+                                  replacement = '100.0'))
 
-# Generate list of 'basic' 95% CI outputs for each quantile
-dex_bootCI <- vector('list', length = 7)
+# Join
+throw_tab <- throw_tab %>%
+    left_join(throw_boot, by = 'Percentile')
 
-for(i in 1:7) {
-    dex_bootCI[[i]] <- boot.ci(dex_boot, 
-                               type = 'basic', 
-                               index = i)$basic[4:5]
-}
 
-# Get length of table 
-dex_length <- nrow(dex_tab)
-
-# Define vector
-dex_conf <- vector(mode = 'character', length = dex_length)
-
-# Fill vector
-for(k in 1:dex_length) {
-    dex_conf[[k]] <- paste(round(dex_bootCI[[k]][[1]], 1), 
-                           round(dex_bootCI[[k]][[2]], 1),
-                           sep = ' to ')
-}
-
-# Add new column to table
-dex_tab <- dex_tab %>%
-    cbind(dex_conf) %>%
-    rename('95% CI' = dex_conf)
-
-pander(dex_tab, 
-       caption = 'MABC balance performance', 
+pander(throw_tab, 
+       caption = 'MABC throwing performance', 
        justify = 'lrrr')
 ```
 
@@ -410,58 +418,63 @@ qplot(data = data, y = MABC.total.percentile, x = '',
           axis.title.x = element_blank())
 
 # Summary table
-dex_tab <- data %>%
+total_tab <- data %>%
     select(ID, 
-           total.summary) %>%
-    rename(Percentile = total.summary) %>%
-    group_by(Percentile) %>%
-    summarise(Count = n(),
-              Percent = round(Count / nrow(data) * 100, 1)) %>%
-    mutate(order = case_when(
-        .$Percentile == '5th' ~ 1,
-        .$Percentile == '10th' ~ 2,
-        .$Percentile == '25th' ~ 3,
-        .$Percentile == '50th' ~ 4,
-        .$Percentile == '75th' ~ 5,
-        .$Percentile == '95th' ~ 6,
-        .$Percentile == '100th' ~ 7
-    )) %>%
-    arrange(order) %>%
-    select(-order)
+           starts_with('total')) %>%
+    gather(key = Percentile,
+           value = Present,
+           -ID) %>%
+    separate(col = Percentile, 
+             into = c('extra', 'Percentile'),
+             sep = '\\.') %>%
+    select(-extra) %>%
+    group_by(Percentile, Present) %>%
+    summarise(`Cumulative count` = n(),
+              `Cumulative percent` = round(sum(Present == 'yes') / nrow(data) * 100, 1)) %>%
+    ungroup() %>%
+    filter(Present == 'yes') %>%
+    select(Percentile, `Cumulative count`, `Cumulative percent`) %>%
+    mutate(Percentile = 
+               fct_relevel(Percentile,
+                           '5th', '10th', '25th', '50th', '75th', '95th', '99th')) %>%
+    arrange(Percentile) %>%
+    mutate(Percentile = as.character(Percentile))
 
-# Bootstrap 95% CI
-dex_boot <- boot(data = data_total$total.summary, 
-              statistic = mabc, 
-              R = 1000)
+# Bootstrap
+total_boot <- data %>%
+    select(starts_with('total')) %>%
+    # Apply bootstrap function
+    map(~boot(., statistic = mabc, R = 1000)) %>%
+    # Generate CI
+    map(~boot.ci(., type = 'basic')) %>%
+    # Remove NULL elements
+    .[sapply(., Negate(is.null))] %>%
+    as_data_frame() %>%
+    # Extract CI
+    dmap(~paste(round(.$basic[4], 1), ' to ', round(.$basic[5], 1))) %>%
+    # Get ready for join
+    gather(key = Percentile,
+           value = '95% CI') %>%
+    separate(col = Percentile, 
+             into = c('extra', 'Percentile'),
+             sep = '\\.') %>%
+    select(-extra) %>%
+    mutate(Percentile = 
+               fct_relevel(Percentile,
+                           '5th', '10th', '25th', '50th', '75th', '95th', '99th')) %>%
+    arrange(Percentile) %>%
+    mutate(Percentile = as.character(Percentile)) %>%
+    # Fix maths > 100% issue
+    mutate(`95% CI` = str_replace(`95% CI`,
+                                  pattern = '10[0-9]\\.[0-9]',
+                                  replacement = '100.0'))
 
-# Generate list of 'basic' 95% CI outputs for each quantile
-dex_bootCI <- vector('list', length = 7)
+# Join
+total_tab <- total_tab %>%
+    left_join(total_boot, by = 'Percentile')
 
-for(i in 1:7) {
-    dex_bootCI[[i]] <- boot.ci(dex_boot, 
-                               type = 'basic', 
-                               index = i)$basic[4:5]
-}
 
-# Get length of table 
-dex_length <- nrow(dex_tab)
-
-# Define vector
-dex_conf <- vector(mode = 'character', length = dex_length)
-
-# Fill vector
-for(k in 1:dex_length) {
-    dex_conf[[k]] <- paste(round(dex_bootCI[[k]][[1]], 1), 
-                           round(dex_bootCI[[k]][[2]], 1),
-                           sep = ' to ')
-}
-
-# Add new column to table
-dex_tab <- dex_tab %>%
-    cbind(dex_conf) %>%
-    rename('95% CI' = dex_conf)
-
-pander(dex_tab, 
+pander(total_tab, 
        caption = 'MABC total performance', 
        justify = 'lrrr')
 ```

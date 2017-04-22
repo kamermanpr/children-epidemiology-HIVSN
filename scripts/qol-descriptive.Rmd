@@ -1,7 +1,7 @@
 ---
 title: 'HIV-SN in children'
 subtitle: 'Descriptive analyses: Quality of life'
-author: Natalie Benjamin, Joanne Potterton, and Peter Kamerman 
+author: Peter Kamerman 
 date: "`r format(Sys.time(), '%d %B %Y')`"
 output: 
   html_document:
@@ -25,12 +25,7 @@ library(boot)
 knitr::opts_chunk$set(echo = TRUE,
                warning = FALSE, 
                message =  FALSE, 
-               cache = TRUE,
-               fig.path = './figures/qol-descriptive/',
-               fig.height = 7,
-               fig.width = 7,
-               fig.align = 'center',
-               tidy = FALSE)
+               fig.align = 'center')
 ```
 
 
@@ -42,6 +37,7 @@ data <- read_csv('./data/cleaned_data.csv')
 data <- select(data,
                ID,
                Neuropathy,
+               Neuropathy_pin,
                starts_with('PEDQL'),
                starts_with('MABC'))
 ```
@@ -64,23 +60,25 @@ qol.physical <- data %>%
            PEDQL.parent.physical, PEDQL.child.physical) %>%
     arrange(ID) %>%
     mutate(Sort = seq(1:nrow(.)))
+
 qol.psychosocial <- data %>% 
     select(ID, contains('psychosocial')) %>%
     gather(key = PEDQL.psychosocial, value = Value.psychosocial, 
            PEDQL.parent.psychosocial, PEDQL.child.psychosocial) %>%
     arrange(ID) %>%
     mutate(Sort = seq(1:nrow(.)))
+
 qol.total <- data %>% 
     select(ID, contains('total')) %>%
     gather(key = PEDQL.total, value = Value.total, 
            PEDQL.parent.total, PEDQL.child.total) %>%
     arrange(ID) %>%
     mutate(Sort = seq(1:nrow(.)))
+
 qol <- qol.physical %>%
     left_join(qol.psychosocial, by = 'Sort') %>%
     left_join(qol.total, by = 'Sort') %>%
     select(-ID.x, -ID.y, -Sort)
-
 ```
 
 ### Prevalence summaries

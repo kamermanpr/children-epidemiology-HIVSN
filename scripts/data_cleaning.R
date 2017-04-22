@@ -3,7 +3,10 @@
 #                      Load packages                       #
 #                                                          #
 ############################################################
-library(tidyverse)
+library(dplyr)
+library(tidyr)
+library(readr)
+library(ggplot2)
 library(stringr)
 library(lubridate)
 
