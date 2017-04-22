@@ -2,6 +2,6 @@
 .Rapp.history
 .Rproj.user
 .Rproj
-*_cache/
-*.html
+outputs/*/cache/
 packrat/lib*/
+html/
